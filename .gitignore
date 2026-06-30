@@ -1,0 +1,43 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Secrets
+.env
+client_secrets.json
+
+# YouTube credentials
+youtube_token.pickle
+
+# Database
+beats.db
+
+# Generated videos
+video_storage/
+
+# Temp / storage directories
+temp/
+audio_storage/
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+
+# Caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# PyCharm
+.idea/
+
+# OS junk
+Thumbs.db
+Desktop.ini
