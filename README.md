@@ -2,59 +2,6 @@
 
 A Telegram bot that lets beat producers manage their instrumental library, auto-detect BPM & musical key, generate music videos, and publish to **YouTube** and **BeatStars** — all from a Telegram chat.
 
-## Features
-
-- **🎧 MP3 Reception** — Accept MP3 files via Telegram (direct audio or document), extract ID3 metadata (title, artist, cover art).
-- **🔍 Duplicate Detection** — SHA-256 hashing prevents importing the same track twice.
-- **🎼 Key & BPM Detection** — Uses librosa with the Krumhansl-Schmuckler algorithm to detect tempo and musical key automatically.
-- **📚 Library Management** — Browse your tracks with pagination, view metadata, see upload status.
-- **🎬 Video Creation** — Generates a 4:3 MP4 video from audio + cover art using ffmpeg.
-- **📤 YouTube Upload** — Upload videos to YouTube via the YouTube Data API v3 with private/unlisted/public visibility.
-- **🎹 BeatStars Upload** — Automates the BeatStars.com upload form via Selenium, filling in title, tags, BPM, key, and cover image.
-- **🖼 Cover Art Handling** — Extracts embedded album art from MP3 files; fallback cover generation if none exists.
-
-## Architecture
-
-```
-main.py                     ← Entry point; initializes DB and starts the bot
-telegram_module.py          ← Telegram bot (aiogram 3.x): FSM, callbacks, inline keyboards
-processor.py                ← Orchestrates file processing → dedup → DB insert pipeline
-file_processing.py          ← MP3 hash, metadata extraction (mutagen), cover art
-database.py                 ← SQLite CRUD with schema migration
-youtube.py                  ← YouTube Data API v3 upload (OAuth 2.0)
-video_creation.py           ← ffmpeg-based music video generation
-beatstars/
-  beatstars_uploader.py     ← Selenium automation for BeatStars upload form
-  beatstars-upload/         ← Original cloned helper project (standalone)
-key_finder/
-  detector.py               ← BPM + key detection using librosa (K-S profiles)
-  ai.py                     ← Standalone key-finder script
-script.py                   ← Standalone key-finder script (alternative)
-```
-
-## Requirements
-
-- Python **3.8+**
-- **ffmpeg** installed and available in your system PATH (for video creation)
-- A Chrome/Chromium browser (for BeatStars Selenium automation)
-
-### Python Dependencies
-
-See `requirements.txt` / `pyproject.toml`:
-
-| Package | Purpose |
-|---|---|
-| `aiogram` | Telegram Bot API framework |
-| `mutagen` | MP3 metadata (ID3 tags, cover art) |
-| `librosa` | Audio analysis (BPM & key detection) |
-| `numpy` | Numerical computation (librosa dependency) |
-| `Pillow` | Image processing (cover cropping, fallback) |
-| `selenium` | Browser automation for BeatStars |
-| `webdriver-manager` | Automatic ChromeDriver management |
-| `google-api-python-client` | YouTube Data API v3 |
-| `google-auth-oauthlib` | YouTube OAuth 2.0 |
-| `python-dotenv` | Environment variable loading |
-
 ## Setup
 
 ### 1. Clone & Install
@@ -108,9 +55,9 @@ python main.py
 
 ### Telegram Commands
 
-| Command | Description |
-|---|---|
-| `/start` | Welcome message with instructions |
+| Command    | Description                                               |
+| ---------- | --------------------------------------------------------- |
+| `/start`   | Welcome message with instructions                         |
 | `/library` | Browse your track library (paginated with inline buttons) |
 
 ### Uploading a Track
@@ -125,9 +72,63 @@ python main.py
 2. **YouTube** — Tap "Upload to YouTube", choose visibility (Private / Unlisted / Public). The bot creates a video from the audio + cover art and uploads it.
 3. **BeatStars** — Tap "Upload to BeatStars", enter up to 3 artist tags (e.g. "Drake, Travis Scott, Metro Boomin"). The bot opens a Chrome browser, logs into BeatStars, fills in the form with all metadata, and leaves the browser open for you to set the publish date and confirm.
 
+## Features
+
+- **🎧 MP3 Reception** — Accept MP3 files via Telegram (direct audio or document), extract ID3 metadata (title, artist, cover art).
+- **🔍 Duplicate Detection** — SHA-256 hashing prevents importing the same track twice.
+- **🎼 Key & BPM Detection** — Uses librosa with the Krumhansl-Schmuckler algorithm to detect tempo and musical key automatically.
+- **📚 Library Management** — Browse your tracks with pagination, view metadata, see upload status.
+- **🎬 Video Creation** — Generates a 4:3 MP4 video from audio + cover art using ffmpeg.
+- **📤 YouTube Upload** — Upload videos to YouTube via the YouTube Data API v3 with private/unlisted/public visibility.
+- **🎹 BeatStars Upload** — Automates the BeatStars.com upload form via Selenium, filling in title, tags, BPM, key, and cover image.
+- **🖼 Cover Art Handling** — Extracts embedded album art from MP3 files; fallback cover generation if none exists.
+
+## Architecture
+
+```
+main.py                     ← Entry point; initializes DB and starts the bot
+telegram_module.py          ← Telegram bot (aiogram 3.x): FSM, callbacks, inline keyboards
+processor.py                ← Orchestrates file processing → dedup → DB insert pipeline
+file_processing.py          ← MP3 hash, metadata extraction (mutagen), cover art
+database.py                 ← SQLite CRUD with schema migration
+youtube.py                  ← YouTube Data API v3 upload (OAuth 2.0)
+video_creation.py           ← ffmpeg-based music video generation
+beatstars/
+  beatstars_uploader.py     ← Selenium automation for BeatStars upload form
+  beatstars-upload/         ← Original cloned helper project (standalone)
+key_finder/
+  detector.py               ← BPM + key detection using librosa (K-S profiles)
+  ai.py                     ← Standalone key-finder script
+script.py                   ← Standalone key-finder script (alternative)
+```
+
+## Requirements
+
+- Python **3.8+**
+- **ffmpeg** installed and available in your system PATH (for video creation)
+- A Chrome/Chromium browser (for BeatStars Selenium automation)
+
+### Python Dependencies
+
+See `requirements.txt` / `pyproject.toml`:
+
+| Package                    | Purpose                                     |
+| -------------------------- | ------------------------------------------- |
+| `aiogram`                  | Telegram Bot API framework                  |
+| `mutagen`                  | MP3 metadata (ID3 tags, cover art)          |
+| `librosa`                  | Audio analysis (BPM & key detection)        |
+| `numpy`                    | Numerical computation (librosa dependency)  |
+| `Pillow`                   | Image processing (cover cropping, fallback) |
+| `selenium`                 | Browser automation for BeatStars            |
+| `webdriver-manager`        | Automatic ChromeDriver management           |
+| `google-api-python-client` | YouTube Data API v3                         |
+| `google-auth-oauthlib`     | YouTube OAuth 2.0                           |
+| `python-dotenv`            | Environment variable loading                |
+
 ### Library Detail View
 
 Each track shows:
+
 - Title & artist (from ID3 tags)
 - Duration, file size, bitrate
 - Cover art presence
@@ -138,6 +139,7 @@ Each track shows:
 ## Key Detection
 
 The key detector (`key_finder/detector.py`) uses:
+
 - **Chroma CQT** features for pitch-class representation
 - **Krumhansl-Schmuckler** key profiles correlated across all 12 shifts
 - Multi-segment averaging (10-second windows) for robustness
