@@ -7,7 +7,7 @@ A Telegram bot that lets beat producers manage their instrumental library, auto-
 ### 1. Clone & Install
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/cubeaftercube/BeatsUpload
 cd BeatsUpload
 python -m venv .venv
 source .venv/bin/activate   # or .venv\Scripts\activate on Windows
