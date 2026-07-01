@@ -6,4 +6,6 @@ dependencies = [
     "aiogram>=3.13.1",
     "google-api-python-client>=2.198.0",
     "python-dotenv>=1.0.1",
+    "selenium>=4.1.0",
+    "webdriver-manager>=4.0.0",
 ]

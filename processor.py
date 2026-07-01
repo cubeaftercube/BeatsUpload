@@ -63,6 +63,8 @@ def process_audio(file_path: str, unique_id: int, user_id: int = 0) -> dict:
         "duration": result["duration"],
         "bitrate": result["bitrate"],
         "sample_rate": result["sample_rate"],
+        "bpm": result.get("bpm"),
+        "key": result.get("key"),
         "has_cover": int(result["has_cover"]),
         "cover_path": result["cover_path"],
         "uploaded_at": now,

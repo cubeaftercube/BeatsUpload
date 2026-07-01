@@ -3,6 +3,7 @@ import os
 import hashlib
 
 from mutagen.mp3 import MP3
+from key_finder.detector import detect_key_bpm
 
 
 def _compute_sha256(path: str) -> str:
@@ -74,6 +75,8 @@ def process_audio(path: str) -> dict:
                 "sample_rate": 0,
                 "has_cover": False,
                 "cover_path": None,
+                "bpm": None,
+                "key": None,
             }
 
         # Метаданные
@@ -95,6 +98,11 @@ def process_audio(path: str) -> dict:
         cover_path = _extract_cover(audio, file_hash)
         has_cover = cover_path is not None
 
+        # Key & BPM detection (librosa)
+        key_bpm = detect_key_bpm(path)
+        bpm = key_bpm.get("bpm")
+        detected_key = key_bpm.get("key")
+
         return {
             "success": True,
             "error": None,
@@ -107,6 +115,8 @@ def process_audio(path: str) -> dict:
             "sample_rate": sample_rate,
             "has_cover": has_cover,
             "cover_path": cover_path,
+            "bpm": bpm,
+            "key": detected_key,
         }
 
     except Exception as e:
@@ -122,4 +132,6 @@ def process_audio(path: str) -> dict:
             "sample_rate": 0,
             "has_cover": False,
             "cover_path": None,
+            "bpm": None,
+            "key": None,
         }

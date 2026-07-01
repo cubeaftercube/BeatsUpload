@@ -7,6 +7,9 @@ from dotenv import load_dotenv
 
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import (
     Message,
     CallbackQuery,
@@ -18,6 +21,7 @@ import processor
 import database
 import video_creation
 import youtube
+from beatstars import beatstars_uploader
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -25,7 +29,13 @@ load_dotenv()
 
 API_TOKEN = os.getenv("BOT_API_TOKEN")
 bot = Bot(token=API_TOKEN)
-dp = Dispatcher()
+dp = Dispatcher(storage=MemoryStorage())
+
+# --- FSM для загрузки на BeatStars ---
+
+
+class BeatStarsUpload(StatesGroup):
+    waiting_for_tags = State()
 
 # Директории
 AUDIO_DIR = "audio_storage"
@@ -235,6 +245,9 @@ def _build_track_detail_text(track: dict) -> str:
     has_cover = "✅" if track.get("has_cover") else "❌"
     yt_status = track.get("youtube_status")
     yt_video_id = track.get("youtube_video_id")
+    bs_status = track.get("beatstars_status")
+    detected_bpm = track.get("bpm")
+    detected_key = track.get("key")
 
     lines = [
         f"🎵 <b>{artist} — {title}</b>",
@@ -243,15 +256,28 @@ def _build_track_detail_text(track: dict) -> str:
         f"📦 Размер: {size_mb:.1f} МБ",
         f"🔊 Битрейт: {bitrate} kbps",
         f"🖼 Обложка: {has_cover}",
-        f"📅 Загружен: {track['uploaded_at'][:10]}",
     ]
+
+    if detected_bpm:
+        lines.append(f"🎼 BPM: {detected_bpm}")
+    if detected_key:
+        lines.append(f"🎹 Тональность: {detected_key}")
+
+    lines.append(f"📅 Загружен: {track['uploaded_at'][:10]}")
 
     if yt_status == "uploaded" and yt_video_id:
         lines.append(f"")
         lines.append(f"🔗 <a href='https://youtube.com/watch?v={yt_video_id}'>Смотреть на YouTube</a>")
     elif yt_status == "failed":
         lines.append(f"")
-        lines.append(f"⚠️ Предыдущая попытка загрузки не удалась.")
+        lines.append(f"⚠️ Предыдущая попытка загрузки на YouTube не удалась.")
+
+    if bs_status == "uploaded":
+        lines.append(f"")
+        lines.append(f"🎹 Загружен на BeatStars ✅")
+    elif bs_status == "failed":
+        lines.append(f"")
+        lines.append(f"⚠️ Предыдущая попытка загрузки на BeatStars не удалась.")
 
     return "\n".join(lines)
 
@@ -270,12 +296,21 @@ async def track_detail(callback: CallbackQuery):
     # Кнопки
     buttons = []
     yt_status = track.get("youtube_status")
+    bs_status = track.get("beatstars_status")
 
     if yt_status != "uploaded":
         buttons.append([
             InlineKeyboardButton(
                 text="⬆️ Загрузить на YouTube",
                 callback_data=f"upload_{track_id}",
+            )
+        ])
+
+    if bs_status != "uploaded":
+        buttons.append([
+            InlineKeyboardButton(
+                text="🎹 Загрузить на BeatStars",
+                callback_data=f"upload_bs_{track_id}",
             )
         ])
 
@@ -310,7 +345,7 @@ async def track_detail(callback: CallbackQuery):
 
 # ─── Callback: выбор видимости ────────────────────────────────────
 
-@dp.callback_query(lambda c: c.data.startswith("upload_"))
+@dp.callback_query(lambda c: c.data.startswith("upload_") and not c.data.startswith("upload_bs_"))
 async def ask_visibility(callback: CallbackQuery):
     track_id = int(callback.data.split("_")[1])
     track = database.get_track_by_id(track_id)
@@ -473,6 +508,122 @@ async def do_upload(callback: CallbackQuery):
         database.update_youtube_status(track_id, None, "failed")
         await callback.message.edit_text(
             f"❌ <b>Ошибка при загрузке на YouTube:</b>\n\n"
+            f"{result['error']}",
+            parse_mode="HTML",
+        )
+
+
+# ─── Callback: запрос тегов для BeatStars ──────────────────────────
+
+
+@dp.callback_query(lambda c: c.data.startswith("upload_bs_"))
+async def ask_beatstars_tags(callback: CallbackQuery, state: FSMContext):
+    track_id = int(callback.data.split("_")[2])
+    track = database.get_track_by_id(track_id)
+
+    if track is None:
+        await callback.answer("Трек не найден.", show_alert=True)
+        return
+
+    # Сохраняем track_id в состоянии
+    await state.update_data(track_id=track_id)
+    await state.set_state(BeatStarsUpload.waiting_for_tags)
+
+    title = track.get("title") or "Без названия"
+    artist = track.get("artist") or "Неизвестен"
+    bpm = track.get("bpm")
+    detected_key = track.get("key")
+
+    extra = ""
+    if bpm or detected_key:
+        extra += f"\n\nАвто-определено:"
+        if bpm:
+            extra += f"\n🎼 BPM: <b>{bpm}</b>"
+        if detected_key:
+            extra += f"\n🎹 Тональность: <b>{detected_key}</b>"
+
+    await callback.message.edit_text(
+        f"🎹 <b>Загрузка на BeatStars</b>\n\n"
+        f"🎵 {artist} — {title}{extra}\n\n"
+        f"Отправь <b>3 тега</b> (имена артистов через запятую),\n"
+        f"чтобы твой бит находили чаще:\n\n"
+        f"<i>Например: Drake, Travis Scott, Metro Boomin</i>",
+        parse_mode="HTML",
+    )
+    await callback.answer()
+
+
+# ─── FSM: приём тегов и запуск загрузки на BeatStars ───────────────
+
+
+@dp.message(BeatStarsUpload.waiting_for_tags)
+async def receive_beatstars_tags(message: Message, state: FSMContext):
+    data = await state.get_data()
+    track_id = data.get("track_id")
+    await state.clear()
+
+    if track_id is None:
+        await message.answer("❌ Что-то пошло не так. Попробуй снова из библиотеки.")
+        return
+
+    track = database.get_track_by_id(track_id)
+    if track is None:
+        await message.answer("❌ Трек не найден в базе.")
+        return
+
+    # Парсим теги
+    raw = message.text.strip() if message.text else ""
+    tags = [t.strip() for t in raw.split(",") if t.strip()]
+
+    if len(tags) < 1:
+        await message.answer(
+            "⚠️ Нужен хотя бы один тег. Попробуй ещё раз из библиотеки."
+        )
+        return
+
+    if len(tags) > 3:
+        tags = tags[:3]
+
+    title = track.get("title") or "Без названия"
+    artist = track.get("artist") or "Неизвестен"
+    detected_bpm = track.get("bpm")
+    detected_key = track.get("key")
+
+    extra = ""
+    if detected_bpm:
+        extra += f"\n🎼 BPM: {detected_bpm}"
+    if detected_key:
+        extra += f"\n🎹 Тональность: {detected_key}"
+
+    await message.answer(
+        f"🎹 <b>Загружаю на BeatStars...</b>\n\n"
+        f"🎵 {artist} — {title}\n"
+        f"🏷 Теги: {', '.join(tags)}{extra}\n\n"
+        f"<i>Браузер откроется для завершения загрузки...</i>",
+        parse_mode="HTML",
+    )
+
+    # Запускаем загрузку в отдельном потоке (Selenium блокирующий)
+    import asyncio
+    result = await asyncio.to_thread(
+        beatstars_uploader.upload_to_beatstars,
+        track=track,
+        tags=tags,
+    )
+
+    if result["success"]:
+        database.update_beatstars_status(track_id, "uploaded")
+        await message.answer(
+            f"✅ <b>Форма BeatStars заполнена!</b>\n\n"
+            f"🎵 {artist} — {title}\n"
+            f"🏷 Теги: {', '.join(tags)}\n\n"
+            f"{result['message']}",
+            parse_mode="HTML",
+        )
+    else:
+        database.update_beatstars_status(track_id, "failed")
+        await message.answer(
+            f"❌ <b>Ошибка при загрузке на BeatStars:</b>\n\n"
             f"{result['error']}",
             parse_mode="HTML",
         )

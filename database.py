@@ -37,6 +37,9 @@ def init_db() -> None:
         "ALTER TABLE tracks ADD COLUMN user_id INTEGER",
         "ALTER TABLE tracks ADD COLUMN youtube_video_id TEXT",
         "ALTER TABLE tracks ADD COLUMN youtube_status TEXT",
+        "ALTER TABLE tracks ADD COLUMN beatstars_status TEXT",
+        "ALTER TABLE tracks ADD COLUMN bpm REAL",
+        "ALTER TABLE tracks ADD COLUMN key TEXT",
     ]
     for sql in migrations:
         try:
@@ -69,11 +72,11 @@ def insert_track(track_data: dict) -> int | None:
             INSERT INTO tracks
                 (unique_id, user_id, file_hash, file_path, file_size,
                  title, artist, duration, bitrate, sample_rate,
-                 has_cover, cover_path, uploaded_at)
+                 bpm, key, has_cover, cover_path, uploaded_at)
             VALUES
                 (:unique_id, :user_id, :file_hash, :file_path, :file_size,
                  :title, :artist, :duration, :bitrate, :sample_rate,
-                 :has_cover, :cover_path, :uploaded_at)
+                 :bpm, :key, :has_cover, :cover_path, :uploaded_at)
             """,
             track_data,
         )
@@ -125,6 +128,17 @@ def update_youtube_status(track_id: int, video_id: str | None, status: str) -> N
     conn.execute(
         "UPDATE tracks SET youtube_video_id = ?, youtube_status = ? WHERE id = ?",
         (video_id, status, track_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def update_beatstars_status(track_id: int, status: str) -> None:
+    """Обновляет статус загрузки на BeatStars."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute(
+        "UPDATE tracks SET beatstars_status = ? WHERE id = ?",
+        (status, track_id),
     )
     conn.commit()
     conn.close()
