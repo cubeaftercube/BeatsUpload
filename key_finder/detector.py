@@ -8,6 +8,11 @@ Key detection : chroma_cqt + Krumhansl-Schmuckler major/minor profiles
 
 import numpy as np
 
+try:
+    import librosa
+except ImportError:
+    librosa = None
+
 # Chroma labels (12 semitones)
 CHROMA_LABELS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
@@ -70,7 +75,7 @@ def _detect_bpm(y: np.ndarray, sr: float) -> float:
     Returns:
         Estimated BPM as a float, rounded to 1 decimal place.
     """
-    tempo, _ = __import__("librosa").beat.beat_track(y=y, sr=sr)
+    tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
     # tempo can be an array or scalar
     if hasattr(tempo, "__len__"):
         return round(float(tempo[0]), 1)
@@ -87,8 +92,6 @@ def _detect_key(y: np.ndarray, sr: float) -> tuple[str, str]:
     Returns:
         Tuple of (chroma_label, key_type) — e.g. ("C", "Minor").
     """
-    librosa = __import__("librosa")
-
     # Split into 10-second segments for a more robust estimate
     segment_length = sr * 10
     num_segments = max(1, len(y) // segment_length)
@@ -163,7 +166,13 @@ def detect_key_bpm(audio_path: str) -> dict:
         - ``error`` (str | None) — error message on total failure, else None
     """
     try:
-        librosa = __import__("librosa")
+        if librosa is None:
+            return {
+                "bpm": None,
+                "key": None,
+                "key_raw": None,
+                "error": "librosa is not installed",
+            }
 
         # Load audio (mono, native sample rate)
         y, sr = librosa.load(audio_path, sr=None, mono=True)
@@ -186,13 +195,6 @@ def detect_key_bpm(audio_path: str) -> dict:
             "error": None,
         }
 
-    except ImportError:
-        return {
-            "bpm": None,
-            "key": None,
-            "key_raw": None,
-            "error": "librosa is not installed",
-        }
     except Exception as e:
         return {
             "bpm": None,

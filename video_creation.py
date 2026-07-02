@@ -52,8 +52,8 @@ def create_music_video(audio_path: str, image_path: str, output_path: str, width
 
     # Construct the ffmpeg video filter based on image aspect ratio
     if img_aspect < target_aspect:
-        # Too vertical: crop top and bottom to 4:3 aspect ratio, then scale
-        crop_h = int(img_w * 0.75)
+        # Too vertical: crop top and bottom to target aspect ratio, then scale
+        crop_h = int(img_w / target_aspect)
         y_offset = (img_h - crop_h) // 2
         vf = f"crop={img_w}:{crop_h}:0:{y_offset},scale={width}:{height}"
     else:

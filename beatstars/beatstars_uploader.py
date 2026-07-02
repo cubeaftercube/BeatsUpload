@@ -7,6 +7,7 @@ database track records instead of filesystem-based beat numbering.
 
 import os
 import time
+
 from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -15,6 +16,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+
+from file_processing import convert_key_to_beatstars
 
 load_dotenv()
 
@@ -362,7 +365,9 @@ def upload_to_beatstars(
                 print("[BeatStars] Warning: could not set BPM field")
 
         # --- Key (optional) ---
-        if key and key in KEY_DICT:
+        # Конвертируем сырую тональность в BeatStars-формат (только Major/Minor)
+        bs_key = convert_key_to_beatstars(key)
+        if bs_key and bs_key in KEY_DICT:
             try:
                 key_elem = WebDriverWait(driver, 15).until(
                     EC.presence_of_element_located((By.NAME, "keyNote"))
@@ -370,7 +375,7 @@ def upload_to_beatstars(
                 key_elem.click()
                 key_select = WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located(
-                        (By.XPATH, f"//*[text()='{KEY_DICT[key]}']")
+                        (By.XPATH, f"//*[text()='{KEY_DICT[bs_key]}']")
                     )
                 )
                 key_select.click()

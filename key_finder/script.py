@@ -67,7 +67,7 @@ def detect_key(mp3_path):
     
     # Split into 10-second segments for more detailed analysis.
     segment_length = sr * 10
-    num_segments = len(yt) // segment_length
+    num_segments = max(1, len(yt) // segment_length)
     chroma_mean_total = np.zeros(12)
 
     for i in range(num_segments):

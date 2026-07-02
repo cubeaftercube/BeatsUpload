@@ -6,8 +6,9 @@ import google_auth_oauthlib.flow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-CLIENT_SECRETS_FILE = "client_secrets.json"
-TOKEN_FILE = "youtube_token.pickle"
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CLIENT_SECRETS_FILE = os.path.join(_BASE_DIR, "client_secrets.json")
+TOKEN_FILE = os.path.join(_BASE_DIR, "youtube_token.pickle")
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 API_SERVICE_NAME = "youtube"
 API_VERSION = "v3"
@@ -82,6 +83,7 @@ def upload_video(
         },
         "status": {
             "privacyStatus": privacy_status,
+            "selfDeclaredMadeForKids": False,
         },
     }
 
@@ -89,13 +91,23 @@ def upload_video(
 
     try:
         insert_request = youtube.videos().insert(
-            part=",".join(body.keys()),
+            part="snippet,status",
             body=body,
             media_body=media_body,
         )
 
         response = None
+        max_retries = 20  # ~10 минут при стандартном chunksize
+        attempts = 0
         while response is None:
+            attempts += 1
+            if attempts > max_retries:
+                return {
+                    "success": False,
+                    "video_id": None,
+                    "video_url": None,
+                    "error": "Таймаут загрузки: превышено количество попыток",
+                }
             status, response = insert_request.next_chunk()
             if status:
                 print(f"Uploaded {int(status.progress() * 100)}%")

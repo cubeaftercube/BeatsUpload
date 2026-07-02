@@ -5,6 +5,12 @@ requires-python = ">=3.8"
 dependencies = [
     "aiogram>=3.13.1",
     "google-api-python-client>=2.198.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-auth-oauthlib>=1.2.0",
+    "librosa>=0.10.0",
+    "mutagen>=1.47.0",
+    "numpy>=1.22.0",
+    "pillow>=10.4.0",
     "python-dotenv>=1.0.1",
     "selenium>=4.1.0",
     "webdriver-manager>=4.0.0",

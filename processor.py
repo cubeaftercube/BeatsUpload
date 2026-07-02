@@ -5,7 +5,8 @@ import file_processing
 import database
 
 
-def process_audio(file_path: str, unique_id: int, user_id: int = 0) -> dict:
+def process_audio(file_path: str, unique_id: int, user_id: int = 0,
+                   original_filename: str | None = None) -> dict:
     """Полный пайплайн обработки аудиофайла вне контекста Telegram.
 
     1. Обрабатывает файл (хеш + метаданные + обложка).
@@ -23,7 +24,7 @@ def process_audio(file_path: str, unique_id: int, user_id: int = 0) -> dict:
     print(f"[Processor] Получен сигнал. Начинаю обработку файла: {file_path} (ID: {unique_id})")
 
     # Шаг 1: обработка файла
-    result = file_processing.process_audio(file_path)
+    result = file_processing.process_audio(file_path, original_filename)
 
     if not result["success"]:
         print(f"[Processor] Ошибка обработки: {result['error']}")
@@ -52,6 +53,11 @@ def process_audio(file_path: str, unique_id: int, user_id: int = 0) -> dict:
 
     # Шаг 3: сохранение в базу
     now = datetime.now(timezone.utc).isoformat()
+
+    # BPM: сохраняем как целое число (BeatStars принимает только int)
+    raw_bpm = result.get("bpm")
+    bpm = int(round(raw_bpm)) if raw_bpm is not None else None
+
     track_data = {
         "unique_id": unique_id,
         "user_id": user_id,
@@ -63,7 +69,7 @@ def process_audio(file_path: str, unique_id: int, user_id: int = 0) -> dict:
         "duration": result["duration"],
         "bitrate": result["bitrate"],
         "sample_rate": result["sample_rate"],
-        "bpm": result.get("bpm"),
+        "bpm": bpm,
         "key": result.get("key"),
         "has_cover": int(result["has_cover"]),
         "cover_path": result["cover_path"],
@@ -88,9 +94,11 @@ def process_audio(file_path: str, unique_id: int, user_id: int = 0) -> dict:
     print(f"[Processor] Трек сохранён в базу (ID: {row_id}). "
           f"Название: {result['title']}, Исполнитель: {result['artist']}")
 
-    # Добавляем row_id в результат для информации
+    # Добавляем row_id и bpm_raw в результат для информации
     result["db_id"] = row_id
     result["uploaded_at"] = now
+    result["bpm_raw"] = raw_bpm  # исходное float-значение (может быть дробным)
+    result["bpm"] = bpm          # округлённое целое, как в базе
 
     return {
         "is_new": True,

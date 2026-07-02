@@ -20,11 +20,13 @@ Create a `.env` file in the project root:
 
 ```ini
 BOT_API_TOKEN=your_telegram_bot_token
+ALLOWED_USER_IDS=845035436
 BEATSTARS_USERNAME=your_beatstars_email
 BEATSTARS_PASSWORD=your_beatstars_password
 ```
 
-Get a Telegram bot token from [@BotFather](https://t.me/BotFather).
+- `BOT_API_TOKEN` — Get a Telegram bot token from [@BotFather](https://t.me/BotFather).
+- `ALLOWED_USER_IDS` — Comma-separated Telegram user IDs that are allowed to use the bot. Anyone else gets an "access denied" message. To find your ID, message [@userinfobot](https://t.me/userinfobot).
 
 ### 3. YouTube OAuth (one-time setup)
 
@@ -98,8 +100,8 @@ beatstars/
   beatstars-upload/         ← Original cloned helper project (standalone)
 key_finder/
   detector.py               ← BPM + key detection using librosa (K-S profiles)
-  ai.py                     ← Standalone key-finder script
-script.py                   ← Standalone key-finder script (alternative)
+  ai.py                     ← Standalone key-finder script (simple, hardcoded path)
+  script.py                 ← Standalone key-finder script (interactive, French)
 ```
 
 ## Requirements
@@ -118,6 +120,8 @@ See `requirements.txt` / `pyproject.toml`:
 | `mutagen`                  | MP3 metadata (ID3 tags, cover art)          |
 | `librosa`                  | Audio analysis (BPM & key detection)        |
 | `numpy`                    | Numerical computation (librosa dependency)  |
+| `google-auth-oauthlib`     | YouTube OAuth 2.0                           |
+| `google-auth-httplib2`     | HTTP transport for Google API               |
 | `Pillow`                   | Image processing (cover cropping, fallback) |
 | `selenium`                 | Browser automation for BeatStars            |
 | `webdriver-manager`        | Automatic ChromeDriver management           |
@@ -140,7 +144,8 @@ Each track shows:
 
 The key detector (`key_finder/detector.py`) uses:
 
-- **Chroma CQT** features for pitch-class representation
+- **Filename parsing** — tried first: extracts BPM and key from the filename (e.g. ``track 140bpm D#min.mp3``)
+- **Chroma CQT** features for pitch-class representation (fallback if filename has no info)
 - **Krumhansl-Schmuckler** key profiles correlated across all 12 shifts
 - Multi-segment averaging (10-second windows) for robustness
 - Silence trimming before analysis
