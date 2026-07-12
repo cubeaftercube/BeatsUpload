@@ -1,5 +1,7 @@
 # BeatsUpload — Telegram Bot for Beat Producers
 
+*currently only working youtube & telegram module, no beatstars*
+
 A Telegram bot that lets beat producers manage their instrumental library, auto-detect BPM & musical key, generate music videos, and publish to **YouTube** and **BeatStars** — all from a Telegram chat.
 
 ## Setup
